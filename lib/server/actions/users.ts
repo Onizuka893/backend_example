@@ -12,6 +12,8 @@ import {
 } from "../utils";
 import { revalidatePath } from "next/cache";
 import { getSessionProfileAndOptionallyRenew } from "../mediators";
+import { ActionResponse } from "@/lib/models/actions";
+import { createUserSchema } from "@/lib/schemas/userSchema";
 
 interface SignInOrRegisterParams {
   email: string;
@@ -102,10 +104,57 @@ export async function signOut(): Promise<void> {
   }
 }
 
+export async function getUsers(): Promise<Profile[] | null> {
+  const users = await DAL.getUsers();
+  return users;
+}
+
 export async function updateProfile(
   profile: Prisma.UserUpdateInput
 ): Promise<void> {
   const sessionProfile = await getSessionProfileAndOptionallyRenew();
   await DAL.updateUser(sessionProfile.id, profile);
   revalidatePath("/", "layout");
+}
+
+export async function updateUserProfileRole(
+  userId: string,
+  role: string
+): Promise<void> {
+  await DAL.updateUserRole(userId, role);
+  revalidatePath("/", "layout");
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  await DAL.deleteUser(userId);
+  revalidatePath("/", "layout");
+}
+
+export async function createUser(
+  _prevState: ActionResponse,
+  formData: FormData
+): Promise<ActionResponse> {
+  const profile = await getSessionProfileAndOptionallyRenew();
+  if (!profile.roles.some((r) => r.role.name === "Admin")) {
+    return {
+      success: false,
+      errors: { authorisation: ["User had not the right roles"] },
+    };
+  }
+
+  // Converteer de FormData naar een object
+  const formDataObject = Object.fromEntries(formData.entries());
+  const { data, error } = createUserSchema.safeParse(formDataObject);
+
+  if (error) return { errors: error.flatten().fieldErrors, success: false };
+
+  const createData = {
+    email: data.email,
+    password: data.password,
+    name: data.name,
+  };
+
+  await DAL.createUser(createData);
+  revalidatePath("/users");
+  return { success: true };
 }

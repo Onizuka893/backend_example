@@ -1,9 +1,9 @@
 import "server-only";
-import { Prisma, Session, User } from "@prisma/client";
+import { Prisma, Session } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { cache } from "react";
 import { hashPassword } from "../utils/passwordUtils";
-import { Profile, SessionProfile } from "../../models/users";
+import { Profile, SessionProfile, User } from "../../models/users";
 import { prismaClient } from "../utils/prismaClient";
 
 /**
@@ -12,15 +12,69 @@ import { prismaClient } from "../utils/prismaClient";
 export async function createUser(
   data: Prisma.UserCreateInput
 ): Promise<Profile> {
+  const defaultRole = await prismaClient.role.findUnique({
+    where: { name: "User" }, // Adjust this to the role you want as default
+  });
+
+  if (!defaultRole) {
+    throw new Error("Default role not found.");
+  }
+
   return prismaClient.user.create({
     data: {
       ...data,
       password: hashPassword(data.password),
+      roles: {
+        create: [
+          {
+            role: {
+              connectOrCreate: {
+                where: {
+                  id: defaultRole.id,
+                },
+                create: {
+                  name: "User",
+                },
+              },
+            },
+          },
+        ],
+      },
     },
     select: {
       id: true,
       email: true,
       name: true,
+      roles: {
+        select: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function getUsers(): Promise<Profile[]> {
+  return prismaClient.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      roles: {
+        select: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -32,7 +86,21 @@ export async function createUser(
  * @param email The email address of the user to retrieve.
  */
 export async function getUserByEmail(email: string): Promise<User | null> {
-  return prismaClient.user.findFirst({ where: { email } });
+  return prismaClient.user.findFirst({
+    where: { email },
+    include: {
+      roles: {
+        select: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
 /**
@@ -76,6 +144,16 @@ export const getSessionProfile = cache(
             id: true,
             email: true,
             name: true,
+            roles: {
+              select: {
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -116,5 +194,65 @@ export async function updateUser(
       ...data,
       id: userId,
     },
+    include: {
+      roles: {
+        select: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function updateUserRole(
+  userId: string,
+  roleName: string
+): Promise<Profile> {
+  const role = await prismaClient.role.findUnique({
+    where: { name: roleName },
+  });
+
+  if (!role) {
+    throw new Error(`Role with name ${roleName} not found.`);
+  }
+
+  return prismaClient.user.update({
+    where: { id: userId },
+    data: {
+      roles: {
+        connect: { id: role.id }, // Connecting the role to the user
+      },
+    },
+    include: {
+      roles: {
+        select: {
+          role: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function deleteUser(userId: string): Promise<void> {
+  await prismaClient.session.deleteMany({
+    where: { userId },
+  });
+
+  await prismaClient.booking.deleteMany({
+    where: { userId },
+  });
+
+  await prismaClient.user.delete({
+    where: { id: userId },
   });
 }

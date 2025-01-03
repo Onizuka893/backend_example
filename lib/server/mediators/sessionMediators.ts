@@ -36,6 +36,30 @@ export async function getSessionProfileOrRedirect(
 }
 
 /**
+ * Retrieve the profile of the logged-in user, if there isn't one, redirect to the given URL.
+ *
+ * @param url The URL to redirect to if the user is not logged in, defaults to '/signin'.
+ */
+export async function getSessionAdminRoleOrRedirect(
+  url: string = "/signin"
+): Promise<Profile> {
+  const sessionId = await getSessionId();
+  const sessionProfile = sessionId
+    ? await DAL.getSessionProfile(sessionId)
+    : null;
+
+  if (!sessionProfile) {
+    return redirect(url);
+  }
+
+  if (!sessionProfile.user.roles.some((r) => r.role.name === "Admin")) {
+    return redirect("/home");
+  }
+
+  return sessionProfile.user;
+}
+
+/**
  * Check if a session is about to expire and extend it if necessary.
  */
 export async function getSessionProfileAndOptionallyRenew(): Promise<Profile> {
