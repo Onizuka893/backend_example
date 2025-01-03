@@ -31,7 +31,6 @@ model Facility {
   id        String     @id @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
   type      String     // E.g., "Meeting Room", "Gym", "Swimming Pool"
-  capacity  Int        // Max number of people
   location  String     // Address or area
   bookings  Booking[]
 }

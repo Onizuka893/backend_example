@@ -5,6 +5,8 @@ const facility = Prisma.validator<Prisma.FacilityDefaultArgs>()({
   select: {
     id: true,
     name: true,
+    type: true,
+    location: true,
     bookings: true,
   },
 });

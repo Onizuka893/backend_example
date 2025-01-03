@@ -46,7 +46,6 @@ async function main() {
     data: Array.from({ length: 10 }, (_, i) => ({
       name: `Facility ${i + 1}`,
       type: i % 2 === 0 ? "Gym" : "Meeting Room",
-      capacity: Math.floor(Math.random() * 50) + 10,
       location: `City ${i + 1}`,
     })),
   });

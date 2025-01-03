@@ -20,7 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import useServerAction from "@/lib/hooks/useServerAction";
+import {
+  useServerAction,
+  useServerActionMultipleParams,
+} from "@/lib/hooks/useServerAction";
 import { Profile } from "@/lib/models/users";
 import { createUserSchema } from "@/lib/schemas/userSchema";
 import Actions from "@/lib/server/actions";
@@ -31,24 +34,51 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Form from "@/components/form";
 import SubmitButtonWithLoading from "@/components/submitButtonWithLoading";
 import FormError from "@/components/formError";
+import { RoleDetails } from "@/lib/models/role";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 export default function UsersPage() {
-  const [isGetting, getUsers] = useServerAction(Actions.getUsers);
+  const [isGettingUsers, getUsers] = useServerAction(Actions.getUsers);
+  const [isGettingRoles, getRoles] = useServerAction(Actions.getRoles);
   const [users, setUsers] = useState<Profile[] | null>([]);
+  const [roles, setRoles] = useState<RoleDetails[] | null>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchUserData = async () => {
       const data = await getUsers({});
       setUsers(data);
     };
 
-    fetchData().catch(console.error);
+    const fetchRoleData = async () => {
+      const data = await getRoles({});
+      setRoles(data);
+    };
+
+    fetchUserData().catch(console.error);
+    fetchRoleData().catch(console.error);
   }, []);
 
   return (
     <div className="min-h-dvh w-full p-10 flex-row space-y-4">
       <div className="grid grid-col-1 sm:grid-cols-3 gap-3">
-        {!isGetting && users?.map((u) => <UserCard key={u.id} user={u} />)}
+        {!isGettingUsers && !isGettingRoles ? (
+          users?.map((u) => <UserCard key={u.id} user={u} roles={roles} />)
+        ) : (
+          <Loader2 />
+        )}
       </div>
       <div>
         <CreateUserDialog />
@@ -59,9 +89,10 @@ export default function UsersPage() {
 
 interface UserCardProps {
   user: Profile;
+  roles: RoleDetails[] | null;
 }
 
-function UserCard({ user }: UserCardProps) {
+function UserCard({ user, roles }: UserCardProps) {
   const [isDeleting, deleteUser] = useServerAction(Actions.deleteUser);
 
   const handleDeleteUser = async () => {
@@ -111,15 +142,7 @@ function UserCard({ user }: UserCardProps) {
           <DialogTrigger asChild>
             <Button>Update</Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nieuwe Moment Booken</DialogTitle>
-              <DialogDescription>
-                Klik op het beschikbare moment dat je wil booken (rode knoppen
-                zijn al eerder gebooked)
-              </DialogDescription>
-            </DialogHeader>
-          </DialogContent>
+          <UpdateUserRoleDialog userId={user.id} roles={roles} />
         </Dialog>
       </CardFooter>
     </Card>
@@ -231,5 +254,94 @@ function UserForm() {
         </div>
       </div>
     </Form>
+  );
+}
+
+interface UpdateUserRoleDialogProps {
+  userId: string;
+  roles: RoleDetails[] | null;
+}
+
+function UpdateUserRoleDialog({ userId, roles }: UpdateUserRoleDialogProps) {
+  const [isUpdating, updateRole] = useServerActionMultipleParams(
+    Actions.updateUserProfileRole
+  );
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+
+  const handleUpdateRole = async () => {
+    await updateRole(userId, value);
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>User Role aanpassen</DialogTitle>
+        <DialogDescription>Roles toevoegen aan een user</DialogDescription>
+      </DialogHeader>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            className="w-[200px] justify-between"
+          >
+            {value
+              ? roles?.find((framework) => framework.name === value)?.name
+              : "Select Role..."}
+            <ChevronsUpDown className="opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0">
+          <Command>
+            <CommandList>
+              <CommandEmpty>No Roles found.</CommandEmpty>
+              <CommandGroup>
+                {roles?.map((role) => (
+                  <CommandItem
+                    key={role.id}
+                    value={role.name}
+                    onSelect={(currentValue) => {
+                      setValue(currentValue === value ? "" : currentValue);
+                      setOpen(false);
+                    }}
+                  >
+                    {role.name}
+                    <Check
+                      className={cn(
+                        "ml-auto",
+                        value === role.name ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      <DialogFooter className="sm:justify-start">
+        <DialogClose asChild>
+          {!isUpdating ? (
+            <Button
+              type="button"
+              className="bg-green-500"
+              onClick={handleUpdateRole}
+            >
+              Add
+            </Button>
+          ) : (
+            <Button disabled className="bg-green-500">
+              <Loader2 />
+            </Button>
+          )}
+        </DialogClose>
+        <DialogClose asChild>
+          <Button type="button" variant={"destructive"}>
+            Cancel
+          </Button>
+        </DialogClose>
+      </DialogFooter>
+    </DialogContent>
   );
 }

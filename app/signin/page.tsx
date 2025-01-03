@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import useServerAction from "@/lib/hooks/useServerAction";
+import { useServerAction } from "@/lib/hooks/useServerAction";
 import Actions from "@/lib/server/actions";
 import { Loader2 } from "lucide-react";
 

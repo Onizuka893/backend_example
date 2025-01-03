@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import useServerAction from "@/lib/hooks/useServerAction";
+import { useServerAction } from "@/lib/hooks/useServerAction";
 import { Facility } from "@/lib/models/facilities";
 import Actions from "@/lib/server/actions";
 import { useEffect, useState } from "react";

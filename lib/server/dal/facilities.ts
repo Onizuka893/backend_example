@@ -1,5 +1,5 @@
 import "server-only";
-import { Prisma } from "@prisma/client";
+import { Facility, Prisma } from "@prisma/client";
 import { cache } from "react";
 import { Facility as FacilityModel } from "../../models/facilities";
 import { prismaClient } from "../utils/prismaClient";
@@ -17,6 +17,8 @@ export async function createFacility(
     select: {
       id: true,
       name: true,
+      type: true,
+      location: true,
       bookings: true,
     },
   });
@@ -27,6 +29,8 @@ export async function getFacilities(): Promise<FacilityModel[]> {
     select: {
       id: true,
       name: true,
+      type: true,
+      location: true,
       bookings: true,
     },
   });
@@ -47,29 +51,31 @@ export const getFacilityById = cache(
       select: {
         id: true,
         name: true,
+        type: true,
+        location: true,
         bookings: true,
       },
-      //   include: {
-      //     bookings: {
-      //       select: {
-      //         id: true,
-      //         date: true,
-      //       },
-      //     },
-      //   },
     });
   }
 );
 
-// export async function updateFacility(
-//   facilityId: string,
-//   data: Prisma.FacilityUpdateInput
-// ): Promise<FacilityModel> {
-//   return prismaClient.facility.update({
-//     where: { id: facilityId },
-//     data: {
-//       ...data,
-//       id: facilityId,
-//     },
-//   });
-// }
+export async function deleteFacility(facilityId: string): Promise<void> {
+  await prismaClient.facility.delete({
+    where: { id: facilityId },
+  });
+}
+
+export async function updateFacility(
+  facilityId: string,
+  data: Prisma.FacilityUpdateInput
+): Promise<Facility> {
+  return prismaClient.facility.update({
+    where: { id: facilityId },
+    data: {
+      ...data,
+    },
+    include: {
+      bookings: true,
+    },
+  });
+}

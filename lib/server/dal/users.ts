@@ -225,7 +225,20 @@ export async function updateUserRole(
     where: { id: userId },
     data: {
       roles: {
-        connect: { id: role.id }, // Connecting the role to the user
+        create: [
+          {
+            role: {
+              connectOrCreate: {
+                where: {
+                  id: role.id,
+                },
+                create: {
+                  name: "Undefined",
+                },
+              },
+            },
+          },
+        ],
       },
     },
     include: {

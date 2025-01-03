@@ -4,7 +4,7 @@ import { FormEventHandler, FunctionComponent, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import useServerAction from "@/lib/hooks/useServerAction";
+import { useServerAction } from "@/lib/hooks/useServerAction";
 import Actions from "@/lib/server/actions";
 import { Profile } from "@/lib/models/users";
 import { Loader2 } from "lucide-react";

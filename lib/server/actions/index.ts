@@ -1,5 +1,7 @@
 import * as users from "./users";
 import * as facilities from "./facilities";
+import * as roles from "./roles";
+import * as payments from "./payments";
 
 /**
  * Om het aantal import statements te beperken en de code overzichtelijk te houden, groeperen we alle acties in dit
@@ -10,6 +12,8 @@ import * as facilities from "./facilities";
  */
 export * from "./users";
 export * from "./facilities";
+export * from "./roles";
+export * from "./payments";
 
 /**
  * We voorzien hier een default export met alle actions in de volledige applicatie.
@@ -20,4 +24,6 @@ export * from "./facilities";
 export default {
   ...users,
   ...facilities,
+  ...roles,
+  ...payments,
 };

@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Actions from "../../lib/server/actions";
-import useServerAction from "../../lib/hooks/useServerAction";
+import { useServerAction } from "../../lib/hooks/useServerAction";
 
 export default function Register() {
   const [name, setName] = useState("");
