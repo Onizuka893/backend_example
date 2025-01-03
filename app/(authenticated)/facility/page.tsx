@@ -27,13 +27,15 @@ import { useEffect, useState } from "react";
 export default function FacilityPage() {
   const [isGetting, getFacilities] = useServerAction(Actions.getFacilities);
   const [facilities, setFacilities] = useState<Facility[] | null>([]);
-  const currentDate = new Date();
+  const [selectedDate, setSelectedDate] = useState(new Date()); // Track the currently selected date
+
+  // Format the selected date for display
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     weekday: "long", // Full day name (e.g., Thursday)
     day: "numeric", // Day of the month (e.g., 2)
     month: "long", // Full month name (e.g., January)
     year: "numeric", // Full year (e.g., 2025)
-  }).format(currentDate);
+  }).format(selectedDate);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,13 +46,40 @@ export default function FacilityPage() {
     fetchData().catch(console.error);
   }, []);
 
+  // Handlers for changing the date
+  const handlePreviousDay = () => {
+    setSelectedDate((prevDate) => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(prevDate.getDate() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextDay = () => {
+    setSelectedDate((prevDate) => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(prevDate.getDate() + 1);
+      return newDate;
+    });
+  };
+
   return (
     <div>
-      <div className="text-3xl font-bold px-10 pt-10">{formattedDate}</div>
+      <div className="flex justify-between items-center px-10 pt-10">
+        <Button onClick={handlePreviousDay}>Previous Day</Button>
+        <div className="text-3xl font-bold">{formattedDate}</div>
+        <Button onClick={handleNextDay}>Next Day</Button>
+      </div>
       <div className="flex justify-center items-start min-h-dvh min-w-full p-10">
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
           {!isGetting &&
-            facilities?.map((f) => <FacilityCard key={f.id} facility={f} />)}
+            facilities?.map((f) => (
+              <FacilityCard
+                key={f.id}
+                facility={f}
+                selectedDate={selectedDate} // Pass selected date
+              />
+            ))}
         </div>
       </div>
     </div>
@@ -59,9 +88,10 @@ export default function FacilityPage() {
 
 interface FacilityCardProps {
   facility: Facility;
+  selectedDate: Date; // Accept selected date as a prop
 }
 
-function FacilityCard({ facility }: FacilityCardProps) {
+function FacilityCard({ facility, selectedDate }: FacilityCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -84,7 +114,10 @@ function FacilityCard({ facility }: FacilityCardProps) {
                 Klik op het beschikbare moment dat je wil booken (rode knoppen
                 zijn al eerder gebooked)
               </DialogDescription>
-              <BookingDialog bookings={facility.bookings} />
+              <BookingDialog
+                bookings={facility.bookings}
+                selectedDate={selectedDate} // Pass selected date to BookingDialog
+              />
             </DialogHeader>
           </DialogContent>
         </Dialog>
@@ -102,12 +135,12 @@ interface Booking {
 
 interface BookingDialogProps {
   bookings: Booking[];
+  selectedDate: Date; // Accept selected date as a prop
 }
 
-function BookingDialog({ bookings }: BookingDialogProps) {
+function BookingDialog({ bookings, selectedDate }: BookingDialogProps) {
   const [isCreating, createBooking] = useServerAction(Actions.createBooking);
   const times = [
-    "07:00",
     "08:00",
     "09:00",
     "10:00",
@@ -124,39 +157,18 @@ function BookingDialog({ bookings }: BookingDialogProps) {
     "21:00",
   ];
 
-  const today = new Date();
-  const todayStart = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-  ); // UTC midnight
-
-  // const handleCreateBooking = async (time: string) => {
-  //   const hours = +time.split(":")[0];
-  //   const minutes = +time.split(":")[1];
-  //   const dateBooking = today;
-  //   console.log("hours: ", hours);
-  //   console.log("minitues: ", minutes);
-  //   console.log(dateBooking.toUTCString());
-  //   dateBooking.setHours(hours);
-  //   dateBooking.setMinutes(minutes);
-  //   const result = await createBooking({
-  //     date: dateBooking,
-  //     facilityId: bookings[0].facilityId,
-  //   });
-  //   console.log(result.id);
-  // };
-
   const handleCreateBooking = async (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
 
-    // Create a new Date object for today, but set the time explicitly
-    const dateBooking = new Date(); // Clone `today` to avoid modifying the original
-    dateBooking.setUTCHours(hours, minutes, 0, 0); // Set hours and minutes in UTC
+    // Create a new Date object based on the selected date
+    const dateBooking = new Date(selectedDate);
+    dateBooking.setHours(hours, minutes, 0, 0);
 
-    console.log("Final booking date (UTC):", dateBooking.toISOString());
+    console.log("Final booking date (local):", dateBooking);
 
     const result = await createBooking({
       date: dateBooking,
-      facilityId: bookings[0].facilityId,
+      facilityId: bookings[0]?.facilityId, // Ensure bookings[0] exists
     });
 
     console.log("Booking created with ID:", result.id);
@@ -168,19 +180,26 @@ function BookingDialog({ bookings }: BookingDialogProps) {
         const isBooked = bookings.some((b) => {
           const bookingDate = new Date(b.date);
 
-          // Check if the booking is on the current day (UTC)
-          const isSameDay =
-            bookingDate.getUTCFullYear() === todayStart.getUTCFullYear() &&
-            bookingDate.getUTCMonth() === todayStart.getUTCMonth() &&
-            bookingDate.getUTCDate() === todayStart.getUTCDate();
+          // Convert both the booking time and selected date to local time for comparison
+          const bookingYear = bookingDate.getFullYear();
+          const bookingMonth = bookingDate.getMonth();
+          const bookingDay = bookingDate.getDate();
+          const bookingHour = bookingDate.getHours();
 
-          // Check if the time matches (UTC)
-          const bookingTime = `${String(bookingDate.getUTCHours()).padStart(
-            2,
-            "0"
-          )}:${String(bookingDate.getUTCMinutes()).padStart(2, "0")}`;
+          const buttonDate = new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate(),
+            parseInt(t.split(":")[0], 10) // Button time's hour in local time
+          );
 
-          return isSameDay && bookingTime === t; // Match both day and time
+          // Check if the local times match
+          return (
+            bookingYear === buttonDate.getFullYear() &&
+            bookingMonth === buttonDate.getMonth() &&
+            bookingDay === buttonDate.getDate() &&
+            bookingHour === buttonDate.getHours()
+          );
         });
 
         return (

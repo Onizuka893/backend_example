@@ -58,7 +58,7 @@ function BookingCard({ booking }: BookingCardProps) {
     month: "long", // Full month name (e.g., January)
     year: "numeric", // Full year (e.g., 2025)
   }).format(bookingDate);
-  const bookingTime = `${String(bookingDate.getUTCHours()).padStart(
+  const bookingTime = `${String(bookingDate.getUTCHours() + 1).padStart(
     2,
     "0"
   )}:${String(bookingDate.getUTCMinutes()).padStart(2, "0")}`;

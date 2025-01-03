@@ -53,12 +53,30 @@ async function main() {
   // Fetch all facility IDs for reference
   const facilityList = await prisma.facility.findMany();
 
+  function generateSingleUtcDateForBooking(): Date {
+    const today = new Date();
+
+    // Set the start of the day (local time)
+    today.setHours(0, 0, 0, 0);
+
+    // Randomly select a day (0 = today, 1 = tomorrow, 2 = two days later)
+    const randomDayOffset = Math.floor(Math.random() * 3); // 0, 1, or 2
+    const selectedDate = new Date(today);
+    selectedDate.setDate(today.getDate() + randomDayOffset);
+
+    // Randomly select an hour between 08:00 and 21:00
+    const randomHour = Math.floor(Math.random() * (21 - 8 + 1)) + 8; // 8 to 21
+    selectedDate.setUTCHours(randomHour, 0, 0, 0); // Set to UTC
+
+    return selectedDate;
+  }
+
   // Create 10 Bookings
   const bookings = await prisma.booking.createMany({
     data: Array.from({ length: 10 }, (_, i) => ({
       facilityId: facilityList[i % facilityList.length].id,
       userId: user.id,
-      date: new Date(new Date().setDate(new Date().getDate() + i)),
+      date: generateSingleUtcDateForBooking(),
       status: i % 2 === 0 ? "Confirmed" : "Pending",
     })),
   });
