@@ -13,7 +13,8 @@ import {
 import { revalidatePath } from "next/cache";
 import { getSessionProfileAndOptionallyRenew } from "../mediators";
 import { ActionResponse } from "@/lib/models/actions";
-import { createUserSchema } from "@/lib/schemas/userSchema";
+import { createUserSchema, loginSchema } from "@/lib/schemas/userSchema";
+import { formAction } from "@/lib/server/mediators";
 
 interface SignInOrRegisterParams {
   email: string;
@@ -52,49 +53,101 @@ export async function signInOrRegister(
   redirect("/home");
 }
 
-export async function register(params: {
-  email: string;
-  password: string;
-  name: string;
-}): Promise<void> {
-  // Create a new user profile
-  const profile = await DAL.createUser({ ...params });
+export async function register(
+  _prevState: ActionResponse,
+  formData: FormData
+): Promise<ActionResponse> {
+  return formAction(createUserSchema, formData, async (data) => {
+    const input = { ...data } as Prisma.UserCreateInput & {
+      passwordConfirmation?: string;
+    };
+    delete input.passwordConfirmation; // Remove unnecessary field
 
-  // Create a session for the new user
-  const session = await DAL.startSession(profile.id);
-  await setSessionCookie(session);
+    // Create a new user
+    const profile = await DAL.createUser(input);
 
-  // Redirect the user to the contacts page after successful registration
-  redirect("/home");
+    // Start a session for the new user
+    const session = await DAL.startSession(profile.id);
+    await setSessionCookie(session);
+
+    // Redirect to the contacts page
+    redirect("/home");
+  });
 }
 
-export async function signIn(params: {
-  email: string;
-  password: string;
-}): Promise<void> {
-  // Fetch the user by email
-  const user = await DAL.getUserByEmail(params.email);
+export async function signIn(
+  _prevState: ActionResponse,
+  formData: FormData
+): Promise<ActionResponse> {
+  return formAction(loginSchema, formData, async (data) => {
+    // Get user by email
+    const user = await DAL.getUserByEmail(data?.email);
 
-  // Validate user existence
-  if (!user) {
-    throw new Error("No user found");
-  }
+    // Define error response in case of invalid login
+    const errorResponse = {
+      errors: {
+        errors: ["No user found with the provided user/password combination."],
+      },
+      success: false,
+    };
+    if (!user) return errorResponse;
 
-  // Verify the provided password
-  const isValidPassword = verifyPassword(user.password, params.password);
-  if (!isValidPassword) {
-    throw new Error(
-      "No user found with the provided email/password combination."
-    );
-  }
+    // Verify the password
+    const isValidPassword = verifyPassword(user.password, data.password);
+    if (!isValidPassword) return errorResponse;
 
-  // Create a session for the signed-in user
-  const session = await DAL.startSession(user.id);
-  await setSessionCookie(session);
+    // Start a session for the user
+    const session = await DAL.startSession(user.id);
+    await setSessionCookie(session);
 
-  // Redirect the user to the contacts page after successful sign-in
-  redirect("/home");
+    // Redirect to the contacts page
+    redirect("/home");
+  });
 }
+
+// export async function register(params: {
+//   email: string;
+//   password: string;
+//   name: string;
+// }): Promise<void> {
+//   // Create a new user profile
+//   const profile = await DAL.createUser({ ...params });
+
+//   // Create a session for the new user
+//   const session = await DAL.startSession(profile.id);
+//   await setSessionCookie(session);
+
+//   // Redirect the user to the contacts page after successful registration
+//   redirect("/home");
+// }
+
+// export async function signIn(params: {
+//   email: string;
+//   password: string;
+// }): Promise<void> {
+//   // Fetch the user by email
+//   const user = await DAL.getUserByEmail(params.email);
+
+//   // Validate user existence
+//   if (!user) {
+//     throw new Error("No user found");
+//   }
+
+//   // Verify the provided password
+//   const isValidPassword = verifyPassword(user.password, params.password);
+//   if (!isValidPassword) {
+//     throw new Error(
+//       "No user found with the provided email/password combination."
+//     );
+//   }
+
+//   // Create a session for the signed-in user
+//   const session = await DAL.startSession(user.id);
+//   await setSessionCookie(session);
+
+//   // Redirect the user to the contacts page after successful sign-in
+//   redirect("/home");
+// }
 
 export async function signOut(): Promise<void> {
   const sessionId = await getSessionId();

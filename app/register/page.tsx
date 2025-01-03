@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useActionState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,24 +12,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Actions from "../../lib/server/actions";
-import { useServerAction } from "../../lib/hooks/useServerAction";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createUserSchema } from "@/lib/schemas/userSchema";
+import Form from "@/components/form";
+import SubmitButtonWithLoading from "@/components/submitButtonWithLoading";
+import FormError from "@/components/formError";
 
 export default function Register() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isPending, register] = useServerAction(Actions.register);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      alert("Passwords don't match!");
-      return;
-    }
-    // Here you would typically handle the registration logic
-    void register({ email, password, name });
-  };
+  const [actionResponse, register] = useActionState(Actions.register, {
+    success: false,
+  });
+  const form = useForm({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      email: "",
+      name: "",
+      password: "",
+      passwordConfirmation: "",
+    },
+  });
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -42,61 +42,79 @@ export default function Register() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+          <Form
+            hookForm={form}
+            action={register}
+            actionResult={actionResponse}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                {...form.register("email")}
+                placeholder="Email"
+                defaultValue={actionResponse?.submittedData?.email ?? ""}
+              />
+              <FormError
+                path="email"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
+              />
+            </div>
+
+            <div>
               <Label htmlFor="name">Name</Label>
               <Input
-                id="name"
-                type="text"
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+                {...form.register("name")}
+                placeholder="Voornaam Naam"
+                defaultValue={actionResponse?.submittedData?.name ?? ""}
+              />
+              <FormError
+                path="name"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
+
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
+                {...form.register("password")}
+                placeholder="Password"
                 type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                defaultValue={actionResponse?.submittedData?.password ?? ""}
+              />
+              <FormError
+                path="password"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+
+            <div>
+              <Label htmlFor="passwordConfirmation">
+                Confirm your password
+              </Label>
               <Input
-                id="confirmPassword"
+                {...form.register("passwordConfirmation")}
+                placeholder="Confirm you password"
                 type="password"
-                placeholder="Confirm your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
+                defaultValue={
+                  actionResponse?.submittedData?.passwordConfirmation ?? ""
+                }
+              />
+              <FormError
+                path="passwordConfirmation"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
               />
             </div>
-            {!isPending ? (
-              <Button type="submit" className="w-full">
-                Register
-              </Button>
-            ) : (
-              <Button type="submit" disabled className="w-full">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              </Button>
-            )}
-          </form>
+
+            <SubmitButtonWithLoading
+              loadingText={"Creating your account..."}
+              text={"Register"}
+            />
+          </Form>
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-600">

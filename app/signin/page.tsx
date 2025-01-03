@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,22 +11,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useServerAction } from "@/lib/hooks/useServerAction";
 import Actions from "@/lib/server/actions";
-import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema } from "@/lib/schemas/userSchema";
+import Form from "@/components/form";
+import FormError from "@/components/formError";
+import SubmitButtonWithLoading from "@/components/submitButtonWithLoading";
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isPending, signIn] = useServerAction(Actions.signIn);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here you would typically handle the sign-in logic
-    console.log("Sign in attempted with:", { email, password });
-    // For now, we'll just redirect to a hypothetical dashboard
-    void signIn({ email, password });
-  };
+  const [actionResponse, signin] = useActionState(Actions.signIn, {
+    success: false,
+  });
+  const form = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -38,39 +40,46 @@ export default function SignIn() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+          <Form
+            hookForm={form}
+            action={signin}
+            actionResult={actionResponse}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="email">Email address</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                {...form.register("email")}
+                placeholder="Email"
+                defaultValue={actionResponse?.submittedData?.email ?? ""}
+              />
+              <FormError
+                path="email"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
               />
             </div>
-            <div className="space-y-2">
+
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input
-                id="password"
+                {...form.register("password")}
+                placeholder="Password"
                 type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                defaultValue={actionResponse?.submittedData?.password ?? ""}
+              />
+              <FormError
+                path="password"
+                formErrors={form.formState.errors}
+                serverErrors={actionResponse}
               />
             </div>
-            {!isPending ? (
-              <Button type="submit" className="w-full">
-                Sign In
-              </Button>
-            ) : (
-              <Button type="submit" disabled className="w-full">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              </Button>
-            )}
-          </form>
+
+            <SubmitButtonWithLoading
+              loadingText={"Signing In..."}
+              text={"Sign In"}
+            />
+          </Form>
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-gray-600">
