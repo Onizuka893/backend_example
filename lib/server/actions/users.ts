@@ -105,50 +105,6 @@ export async function signIn(
   });
 }
 
-// export async function register(params: {
-//   email: string;
-//   password: string;
-//   name: string;
-// }): Promise<void> {
-//   // Create a new user profile
-//   const profile = await DAL.createUser({ ...params });
-
-//   // Create a session for the new user
-//   const session = await DAL.startSession(profile.id);
-//   await setSessionCookie(session);
-
-//   // Redirect the user to the contacts page after successful registration
-//   redirect("/home");
-// }
-
-// export async function signIn(params: {
-//   email: string;
-//   password: string;
-// }): Promise<void> {
-//   // Fetch the user by email
-//   const user = await DAL.getUserByEmail(params.email);
-
-//   // Validate user existence
-//   if (!user) {
-//     throw new Error("No user found");
-//   }
-
-//   // Verify the provided password
-//   const isValidPassword = verifyPassword(user.password, params.password);
-//   if (!isValidPassword) {
-//     throw new Error(
-//       "No user found with the provided email/password combination."
-//     );
-//   }
-
-//   // Create a session for the signed-in user
-//   const session = await DAL.startSession(user.id);
-//   await setSessionCookie(session);
-
-//   // Redirect the user to the contacts page after successful sign-in
-//   redirect("/home");
-// }
-
 export async function signOut(): Promise<void> {
   const sessionId = await getSessionId();
   if (sessionId) {

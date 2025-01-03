@@ -48,7 +48,7 @@ export default function FacilityPage() {
     <div>
       <div className="text-3xl font-bold px-10 pt-10">{formattedDate}</div>
       <div className="flex justify-center items-start min-h-dvh min-w-full p-10">
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
           {!isGetting &&
             facilities?.map((f) => <FacilityCard key={f.id} facility={f} />)}
         </div>
@@ -68,7 +68,10 @@ function FacilityCard({ facility }: FacilityCardProps) {
         <CardTitle>{facility.name}</CardTitle>
         <CardDescription></CardDescription>
       </CardHeader>
-      <CardContent></CardContent>
+      <CardContent>
+        <div>Type: {facility.type}</div>
+        <div>Location: {facility.location}</div>
+      </CardContent>
       <CardFooter>
         <Dialog>
           <DialogTrigger asChild>
@@ -102,6 +105,7 @@ interface BookingDialogProps {
 }
 
 function BookingDialog({ bookings }: BookingDialogProps) {
+  const [isCreating, createBooking] = useServerAction(Actions.createBooking);
   const times = [
     "07:00",
     "08:00",
@@ -124,6 +128,39 @@ function BookingDialog({ bookings }: BookingDialogProps) {
   const todayStart = new Date(
     Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   ); // UTC midnight
+
+  // const handleCreateBooking = async (time: string) => {
+  //   const hours = +time.split(":")[0];
+  //   const minutes = +time.split(":")[1];
+  //   const dateBooking = today;
+  //   console.log("hours: ", hours);
+  //   console.log("minitues: ", minutes);
+  //   console.log(dateBooking.toUTCString());
+  //   dateBooking.setHours(hours);
+  //   dateBooking.setMinutes(minutes);
+  //   const result = await createBooking({
+  //     date: dateBooking,
+  //     facilityId: bookings[0].facilityId,
+  //   });
+  //   console.log(result.id);
+  // };
+
+  const handleCreateBooking = async (time: string) => {
+    const [hours, minutes] = time.split(":").map(Number);
+
+    // Create a new Date object for today, but set the time explicitly
+    const dateBooking = new Date(); // Clone `today` to avoid modifying the original
+    dateBooking.setUTCHours(hours, minutes, 0, 0); // Set hours and minutes in UTC
+
+    console.log("Final booking date (UTC):", dateBooking.toISOString());
+
+    const result = await createBooking({
+      date: dateBooking,
+      facilityId: bookings[0].facilityId,
+    });
+
+    console.log("Booking created with ID:", result.id);
+  };
 
   return (
     <div className="grid grid-cols-5 gap-2">
@@ -159,10 +196,17 @@ function BookingDialog({ bookings }: BookingDialogProps) {
             <DialogContent className="w-[200px]">
               <DialogHeader>
                 <DialogTitle>Ben je Zeker?</DialogTitle>
-                <DialogDescription></DialogDescription>
+                <DialogDescription>
+                  Bedrag is ${(Math.random() * 10).toFixed(2)}
+                </DialogDescription>
               </DialogHeader>
               <DialogFooter className="sm:justify-start">
-                <Button>Ja</Button>
+                <Button
+                  onClick={async () => await handleCreateBooking(t)}
+                  disabled={isCreating}
+                >
+                  Betaal
+                </Button>
                 <DialogClose asChild>
                   <Button type="button" variant={"destructive"}>
                     Nee

@@ -5,7 +5,6 @@ import {
   ChevronUp,
   Home,
   Lock,
-  Settings,
   User,
   User2,
 } from "lucide-react";
@@ -51,11 +50,6 @@ const items = [
     title: "Bookings",
     url: "/booking",
     icon: Calendar,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
   },
 ];
 
