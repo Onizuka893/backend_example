@@ -48,9 +48,7 @@ interface BookingCardProps {
 }
 
 function BookingCard({ booking }: BookingCardProps) {
-  // const [isUpdating, updatePaymentStatus] = useServerAction(
-  //   Actions.updatePaymentStatus
-  // );
+  const [isDeleting, deleteBooking] = useServerAction(Actions.deleteBooking);
   const bookingDate = booking.date;
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     weekday: "long", // Full day name (e.g., Thursday)
@@ -63,10 +61,9 @@ function BookingCard({ booking }: BookingCardProps) {
     "0"
   )}:${String(bookingDate.getUTCMinutes()).padStart(2, "0")}`;
 
-  // const handleUpdateStatus = async () => {
-  //   const updatedPayment = await updatePaymentStatus(payment.id);
-  //   payment.status = updatedPayment?.status as string;
-  // };
+  const handleUpdateStatus = async () => {
+    await deleteBooking(booking.id);
+  };
 
   return (
     <Card>
@@ -81,15 +78,13 @@ function BookingCard({ booking }: BookingCardProps) {
         <div>Status: {booking.status}</div>
         <div>Issuing User: {booking.user.name}</div>
       </CardContent>
-      {/* <CardFooter>
-        {booking.status === "Pending" && !isUpdating ? (
-          <Button className="bg-green-500" onClick={handleUpdateStatus}>
-            Payment Made
+      <CardFooter>
+        {booking.status === "Pending" && !isDeleting && (
+          <Button variant={"destructive"} onClick={handleUpdateStatus}>
+            Cancel Booking
           </Button>
-        ) : (
-          <Button disabled>Has been paid</Button>
         )}
-      </CardFooter> */}
+      </CardFooter>
     </Card>
   );
 }

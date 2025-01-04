@@ -95,3 +95,9 @@ export async function updateBookingStatus(
     },
   });
 }
+
+export async function deleteBooking(bookingId: string): Promise<void> {
+  await prismaClient.booking.delete({
+    where: { id: bookingId },
+  });
+}
