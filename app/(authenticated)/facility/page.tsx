@@ -27,15 +27,10 @@ import { useEffect, useState } from "react";
 export default function FacilityPage() {
   const [isGetting, getFacilities] = useServerAction(Actions.getFacilities);
   const [facilities, setFacilities] = useState<Facility[] | null>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Track the currently selected date
-
-  // Format the selected date for display
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
-    weekday: "long", // Full day name (e.g., Thursday)
-    day: "numeric", // Day of the month (e.g., 2)
-    month: "long", // Full month name (e.g., January)
-    year: "numeric", // Full year (e.g., 2025)
-  }).format(selectedDate);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate()); // Reset time to midnight
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,29 +41,64 @@ export default function FacilityPage() {
     fetchData().catch(console.error);
   }, []);
 
-  // Handlers for changing the date
-  const handlePreviousDay = () => {
-    setSelectedDate((prevDate) => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(prevDate.getDate() - 1);
-      return newDate;
+  const goToNextDay = () => {
+    setSelectedDate((prev) => {
+      const nextDay = new Date(prev);
+      nextDay.setDate(prev.getDate() + 1);
+      return nextDay;
     });
   };
 
-  const handleNextDay = () => {
-    setSelectedDate((prevDate) => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(prevDate.getDate() + 1);
-      return newDate;
+  const goToPreviousDay = () => {
+    setSelectedDate((prev) => {
+      const today = new Date();
+      const currentDate = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+
+      if (prev > currentDate) {
+        const previousDay = new Date(prev);
+        previousDay.setDate(prev.getDate() - 1);
+        return previousDay;
+      }
+      return prev; // Don't change if already at today
     });
+  };
+
+  // Disable the "Previous" button if selectedDate is today
+  const isPreviousDisabled = () => {
+    const today = new Date();
+    const currentDate = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    return selectedDate <= currentDate;
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center px-10 pt-10">
-        <Button onClick={handlePreviousDay}>Previous Day</Button>
-        <div className="text-3xl font-bold">{formattedDate}</div>
-        <Button onClick={handleNextDay}>Next Day</Button>
+      <div className="flex justify-between items-center px-10 pt-10 ">
+        <Button
+          onClick={goToPreviousDay}
+          disabled={isPreviousDisabled()}
+          className={`btn ${isPreviousDisabled() ? "btn-disabled" : ""}`}
+        >
+          Previous
+        </Button>
+        <div className="text-3xl font-bold">
+          {selectedDate.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </div>
+        <Button onClick={goToNextDay} className="btn">
+          Next
+        </Button>
       </div>
       <div className="flex justify-center items-start min-h-dvh min-w-full p-10">
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -77,7 +107,7 @@ export default function FacilityPage() {
               <FacilityCard
                 key={f.id}
                 facility={f}
-                selectedDate={selectedDate} // Pass selected date
+                selectedDate={selectedDate}
               />
             ))}
         </div>
@@ -88,7 +118,7 @@ export default function FacilityPage() {
 
 interface FacilityCardProps {
   facility: Facility;
-  selectedDate: Date; // Accept selected date as a prop
+  selectedDate: Date;
 }
 
 function FacilityCard({ facility, selectedDate }: FacilityCardProps) {
@@ -115,8 +145,9 @@ function FacilityCard({ facility, selectedDate }: FacilityCardProps) {
                 zijn al eerder gebooked)
               </DialogDescription>
               <BookingDialog
+                facilityId={facility.id}
                 bookings={facility.bookings}
-                selectedDate={selectedDate} // Pass selected date to BookingDialog
+                selectedDate={selectedDate}
               />
             </DialogHeader>
           </DialogContent>
@@ -134,11 +165,16 @@ interface Booking {
 }
 
 interface BookingDialogProps {
+  facilityId: string;
   bookings: Booking[];
-  selectedDate: Date; // Accept selected date as a prop
+  selectedDate: Date;
 }
 
-function BookingDialog({ bookings, selectedDate }: BookingDialogProps) {
+function BookingDialog({
+  facilityId,
+  bookings,
+  selectedDate,
+}: BookingDialogProps) {
   const [isCreating, createBooking] = useServerAction(Actions.createBooking);
   const times = [
     "08:00",
@@ -160,7 +196,6 @@ function BookingDialog({ bookings, selectedDate }: BookingDialogProps) {
   const handleCreateBooking = async (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
 
-    // Create a new Date object based on the selected date
     const dateBooking = new Date(selectedDate);
     dateBooking.setHours(hours, minutes, 0, 0);
 
@@ -168,7 +203,7 @@ function BookingDialog({ bookings, selectedDate }: BookingDialogProps) {
 
     const result = await createBooking({
       date: dateBooking,
-      facilityId: bookings[0]?.facilityId, // Ensure bookings[0] exists
+      facilityId: facilityId,
     });
 
     console.log("Booking created with ID:", result.id);
@@ -180,7 +215,6 @@ function BookingDialog({ bookings, selectedDate }: BookingDialogProps) {
         const isBooked = bookings.some((b) => {
           const bookingDate = new Date(b.date);
 
-          // Convert both the booking time and selected date to local time for comparison
           const bookingYear = bookingDate.getFullYear();
           const bookingMonth = bookingDate.getMonth();
           const bookingDay = bookingDate.getDate();
